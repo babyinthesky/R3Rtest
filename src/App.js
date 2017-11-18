@@ -65,19 +65,18 @@ class Canvas extends React.Component {
 
     this.state = {
       cubeRotation: new THREE.Euler(),
-      startMoveCamera:false,
-      initPageX:0,
-      initPageY:0,
-      pageX:0,
-      pageY:0,
-      cameraPosition:new THREE.Vector3(0,-1,r),
-      cameraRotation:new THREE.Euler(),
+      cameraPosition:new THREE.Vector3(0,2,r),
     };
 
-    //this.cameraPosition = new THREE.Vector3(10, 2, 0);
     this.cameraQuaternion = new THREE.Quaternion()
-    this.lightTarget = new THREE.Vector3(0, 2, 3);
+    this.lightTarget = new THREE.Vector3(0, 2, 0);
     this.groundQuaternion = new THREE.Quaternion();
+    this.rotateAngle1 = 0;
+    this.rotateAngle2 = 0;
+    this.startMoveCamera = false;
+    this.initCameraPosition = new THREE.Vector3();
+    this.initCameraPosition.copy(this.state.cameraPosition);
+    this.lightPosition = new THREE.Vector3();
 
     this.onAnimate = this.onAnimate.bind(this);
     this.handleMouseDown = this.handleMouseDown.bind(this);
@@ -85,44 +84,42 @@ class Canvas extends React.Component {
     this.handleMouseUp = this.handleMouseUp.bind(this);
   }
   handleMouseDown(event){
-    this.setState({
-      startMoveCamera:true,
-      initPageX: event.pageX,
-      initPageY: event.pageY,
-    })
-    this.initCameraPosition = new THREE.Vector3();
-    this.initCameraPosition.copy(this.state.cameraPosition);
+    this.startMoveCamera = true;
+    this.pageX = event.pageX;
+    this.pageY = event.pageY;
   }
   handleMouseMove(event){
-    if(this.state.startMoveCamera){
-      let offsetX = event.pageX - this.state.initPageX;
-      let offsetY = event.pageY - this.state.initPageY;
+    if(this.startMoveCamera){
+      let offsetX = event.pageX - this.pageX;
+      let offsetY = event.pageY - this.pageY;
+      let angle1 = offsetX / this.props.canvasWidth * Math.PI;
+      let angle2 = offsetY / this.props.canvasHeight * Math.PI;
 
+      this.rotateAngle1 += angle1; //horizon direction rotation angle
+      if((this.rotateAngle2+angle2)>=0&&(this.rotateAngle2+angle2)<=1.57){
+        this.rotateAngle2 += angle2; //vertical direction ratation angle
+      }
+      if(Math.abs(this.rotateAngle1)>=2*Math.PI){
+        this.rotateAngle1=0;
+      }
+      if(Math.abs(this.rotateAngle2)>=2*Math.PI){
+        this.rotateAngle2=0;
+      }
 
-      let angle = offsetX / this.props.canvasWidth * Math.PI;
-      console.log(angle);
-      // let newCameraX = this.state.cameraPosition.x - offsetX;
-      // let newCameraY = this.state.cameraPosition.y - offsetY;
-      // let sin = offsetX / this.state.cameraPosition.z;
-      // let delta = offsetX * sin;
-      // let newCameraZ = this.state.cameraPosition.z - delta;
-      //let rotationX = offsetX/Math.PI*r;
-      //let rotationY = offsetY/Math.PI*r;
-      let newCameraX = this.initCameraPosition.x-Math.sin(angle) * r;
-      let newCameraZ = this.initCameraPosition.z-(r-Math.cos(angle) * r);
-      console.log(newCameraX, newCameraZ);
+      let newCameraX = r * Math.cos(this.rotateAngle2) * Math.sin(this.rotateAngle1);
+      let newCameraY = this.initCameraPosition.y + r * Math.sin(this.rotateAngle2);
+      let newCameraZ = r * Math.cos(this.rotateAngle2) * Math.cos(this.rotateAngle1);
+
       this.setState({
-        // pageX: event.pageX,
-        // pageY: event.pageY,
-        cameraPosition: new THREE.Vector3(newCameraX, this.state.cameraPosition.y, newCameraZ),
-        //cameraRotation: new THREE.Euler(1, 0),
+        cameraPosition: new THREE.Vector3(newCameraX, newCameraY, newCameraZ),
       })
+      this.pageX = event.pageX;
+      this.pageY = event.pageY;
+
     }
   }
   handleMouseUp(event){
-    this.setState({
-      startMoveCamera:false,
-    })
+    this.startMoveCamera = false;
   }
   onAnimate(){
     this.setState({
@@ -133,9 +130,9 @@ class Canvas extends React.Component {
     });
   }
   render() {
-
     let lightPos = this.props.lightPos;
     this.lightPosition = new THREE.Vector3(lightPos.x, lightPos.y, lightPos.z);
+
     return (
       <div
         onMouseDown={this.handleMouseDown}
@@ -162,7 +159,6 @@ class Canvas extends React.Component {
               far={10000}
               position={this.state.cameraPosition}
               quaternion={this.cameraQuaternion}
-              rotation={this.state.cameraRotation}
               lookAt={this.lightTarget}/>
             <ambientLight
               color={0x666666}
@@ -197,7 +193,7 @@ class Canvas extends React.Component {
               castShadow
               receiveShadow
               position = {new THREE.Vector3(0, -2, 0)}
-              rotation={new THREE.Euler(-1.2,0)}
+              rotation={new THREE.Euler(-1.57,0)}
             >
               <circleBufferGeometry
                 radius={10}
